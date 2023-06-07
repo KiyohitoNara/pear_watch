@@ -25,9 +25,14 @@
 package io.github.kiyohitonara.pearwatch
 
 import android.app.Application
+import timber.log.Timber
 
 class PearWatchApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+        }
     }
 }
