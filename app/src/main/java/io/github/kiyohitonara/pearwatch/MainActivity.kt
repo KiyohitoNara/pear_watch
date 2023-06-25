@@ -24,63 +24,129 @@
 
 package io.github.kiyohitonara.pearwatch
 
+import android.app.Application
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.wear.compose.material.MaterialTheme
+import androidx.wear.compose.material.Icon
+import androidx.wear.compose.material.ListHeader
+import androidx.wear.compose.material.PositionIndicator
+import androidx.wear.compose.material.Scaffold
+import androidx.wear.compose.material.ScalingLazyColumn
 import androidx.wear.compose.material.Text
-import io.github.kiyohitonara.pearwatch.theme.PearWatchTheme
+import androidx.wear.compose.material.TimeText
+import androidx.wear.compose.material.ToggleChip
+import androidx.wear.compose.material.ToggleChipDefaults
+import androidx.wear.compose.material.Vignette
+import androidx.wear.compose.material.VignettePosition
+import androidx.wear.compose.material.items
+import androidx.wear.compose.material.rememberScalingLazyListState
+import androidx.wear.compose.material.scrollAway
 
 class MainActivity : ComponentActivity() {
+    private val scannedBluetoothDeviceViewModel: ScannedBluetoothDeviceViewModelStub by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            WearApp("Android")
+            ScannedDevicesListScreen(viewModel = scannedBluetoothDeviceViewModel)
         }
     }
 }
 
 @Composable
-fun WearApp(greetingName: String) {
-    PearWatchTheme {
-        /* If you have enough items in your list, use [ScalingLazyColumn] which is an optimized
-         * version of LazyColumn for wear devices with some added features. For more information,
-         * see d.android.com/wear/compose.
-         */
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colors.background),
-            verticalArrangement = Arrangement.Center
+fun ScannedDevicesListScreen(viewModel: ScannedBluetoothDeviceViewModel) {
+    val scannedDevices by viewModel.devices.collectAsState()
+    val listState = rememberScalingLazyListState()
+
+    Scaffold(
+        vignette = {
+            Vignette(vignettePosition = VignettePosition.TopAndBottom)
+        },
+        positionIndicator = {
+            PositionIndicator(scalingLazyListState = listState)
+        },
+        timeText = {
+            TimeText(modifier = Modifier.scrollAway(listState))
+        }
+    ) {
+        ScalingLazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            state = listState
         ) {
-            Greeting(greetingName = greetingName)
+            item {
+                ListHeader {
+                    Text(text = stringResource(id = R.string.devices))
+                }
+            }
+
+            items(scannedDevices) { device ->
+                ToggleChip(
+                    modifier = Modifier.fillMaxWidth(),
+                    label = {
+                        Text(
+                            text = device.name,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    secondaryLabel = {
+                        Text(
+                            text = device.address,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    toggleControl = {
+                        Icon(
+                            imageVector = ToggleChipDefaults.radioIcon(false),
+                            contentDescription = null
+                        )
+                    },
+                    checked = false,
+                    onCheckedChange = {}
+                )
+            }
+
+            item {
+                ToggleChip(
+                    modifier = Modifier.fillMaxWidth(),
+                    label = {
+                        Text(
+                            text = stringResource(id = R.string.disconnect),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    toggleControl = {
+                        Icon(
+                            imageVector = ToggleChipDefaults.radioIcon(false),
+                            contentDescription = null
+                        )
+                    },
+                    checked = false,
+                    onCheckedChange = {}
+                )
+            }
         }
     }
-}
-
-@Composable
-fun Greeting(greetingName: String) {
-    Text(
-        modifier = Modifier.fillMaxWidth(),
-        textAlign = TextAlign.Center,
-        color = MaterialTheme.colors.primary,
-        text = stringResource(R.string.hello_world, greetingName)
-    )
 }
 
 @Preview(device = Devices.WEAR_OS_SMALL_ROUND, showSystemUi = true)
 @Composable
-fun DefaultPreview() {
-    WearApp("Preview Android")
+fun ScannedDevicesListScreenPreview() {
+    val viewModel = ScannedBluetoothDeviceViewModelStub(Application())
+
+    ScannedDevicesListScreen(viewModel = viewModel)
 }
