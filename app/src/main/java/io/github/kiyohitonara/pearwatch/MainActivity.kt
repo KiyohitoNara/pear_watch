@@ -62,6 +62,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             ScannedDevicesListScreen(viewModel = scannedBluetoothDeviceViewModel)
         }
+
+        lifecycle.addObserver(scannedBluetoothDeviceViewModel)
     }
 }
 

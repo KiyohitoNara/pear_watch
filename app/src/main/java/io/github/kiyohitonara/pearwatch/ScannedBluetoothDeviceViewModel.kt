@@ -26,13 +26,23 @@ package io.github.kiyohitonara.pearwatch
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-abstract class ScannedBluetoothDeviceViewModel(application: Application) : AndroidViewModel(application) {
+abstract class ScannedBluetoothDeviceViewModel(application: Application) : AndroidViewModel(application), DefaultLifecycleObserver {
     protected val _devices: MutableStateFlow<List<ScannedBluetoothDevice>> = MutableStateFlow(listOf())
     val devices: StateFlow<List<ScannedBluetoothDevice>> get() = _devices.asStateFlow()
+
+    override fun onResume(owner: LifecycleOwner) {
+        startScan()
+    }
+
+    override fun onPause(owner: LifecycleOwner) {
+        stopScan()
+    }
 
     abstract fun startScan()
 
