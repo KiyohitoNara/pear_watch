@@ -24,6 +24,7 @@
 
 <resources>
     <string name="app_name">PearWatch</string>
+    <string name="connected_message">Connected %1$s.</string>
     <string name="devices">Devices</string>
     <string name="disconnect">Disconnect</string>
     <!--

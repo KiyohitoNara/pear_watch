@@ -25,7 +25,11 @@
 package io.github.kiyohitonara.pearwatch
 
 import android.app.Application
+import android.content.ComponentName
+import android.content.Intent
+import android.content.ServiceConnection
 import android.os.Bundle
+import android.os.IBinder
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -34,7 +38,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Devices
@@ -55,20 +62,59 @@ import androidx.wear.compose.material.rememberScalingLazyListState
 import androidx.wear.compose.material.scrollAway
 
 class MainActivity : ComponentActivity() {
+    private var scannedBluetoothDevice: ScannedBluetoothDevice? by mutableStateOf(null)
     private val scannedBluetoothDeviceViewModel: ScannedBluetoothDeviceViewModelStub by viewModels()
+
+    private val connection = object : ServiceConnection {
+        override fun onServiceConnected(className: ComponentName, service: IBinder) {
+            val binder = service as MainService.LocalBinder
+
+            val mainService = binder.getService()
+            mainService.setScannedBluetoothDeviceListener(scannedBluetoothDeviceListener)
+        }
+
+        override fun onServiceDisconnected(arg0: ComponentName) {
+            scannedBluetoothDevice = null
+        }
+    }
+
+    private val scannedBluetoothDeviceListener = object : ScannedBluetoothDeviceListener {
+        override fun onDeviceConnected(device: ScannedBluetoothDevice) {
+            scannedBluetoothDevice = device
+        }
+
+        override fun onDeviceDisconnected() {
+            scannedBluetoothDevice = null
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            ScannedDevicesListScreen(viewModel = scannedBluetoothDeviceViewModel)
+            ScannedDevicesListScreen(device = scannedBluetoothDevice, viewModel = scannedBluetoothDeviceViewModel)
         }
 
         lifecycle.addObserver(scannedBluetoothDeviceViewModel)
     }
+
+    override fun onResume() {
+        super.onResume()
+
+        val intent = Intent(this, MainService::class.java)
+        bindService(intent, connection, Application.BIND_AUTO_CREATE)
+    }
+
+    override fun onPause() {
+        super.onPause()
+
+        unbindService(connection)
+    }
 }
 
 @Composable
-fun ScannedDevicesListScreen(viewModel: ScannedBluetoothDeviceViewModel) {
+fun ScannedDevicesListScreen(device: ScannedBluetoothDevice?, viewModel: ScannedBluetoothDeviceViewModel) {
+    val context = LocalContext.current
+
     val scannedDevices by viewModel.devices.collectAsState()
     val listState = rememberScalingLazyListState()
 
@@ -93,31 +139,36 @@ fun ScannedDevicesListScreen(viewModel: ScannedBluetoothDeviceViewModel) {
                 }
             }
 
-            items(scannedDevices) { device ->
+            items(scannedDevices) { scannedDevice ->
                 ToggleChip(
                     modifier = Modifier.fillMaxWidth(),
                     label = {
                         Text(
-                            text = device.name,
+                            text = scannedDevice.name,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     },
                     secondaryLabel = {
                         Text(
-                            text = device.address,
+                            text = scannedDevice.address,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     },
                     toggleControl = {
                         Icon(
-                            imageVector = ToggleChipDefaults.radioIcon(false),
+                            imageVector = ToggleChipDefaults.radioIcon(scannedDevice == device),
                             contentDescription = null
                         )
                     },
                     checked = false,
-                    onCheckedChange = {}
+                    onCheckedChange = {
+                        val intent = Intent(context, MainService::class.java)
+                        intent.putExtra(MainService.EXTRA_DEVICE_NAME, scannedDevice.name)
+                        intent.putExtra(MainService.EXTRA_DEVICE_ADDRESS, scannedDevice.address)
+                        context.startService(intent)
+                    }
                 )
             }
 
@@ -133,12 +184,15 @@ fun ScannedDevicesListScreen(viewModel: ScannedBluetoothDeviceViewModel) {
                     },
                     toggleControl = {
                         Icon(
-                            imageVector = ToggleChipDefaults.radioIcon(false),
+                            imageVector = ToggleChipDefaults.radioIcon(device == null),
                             contentDescription = null
                         )
                     },
                     checked = false,
-                    onCheckedChange = {}
+                    onCheckedChange = {
+                        val intent = Intent(context, MainService::class.java)
+                        context.startService(intent)
+                    }
                 )
             }
         }
@@ -150,5 +204,5 @@ fun ScannedDevicesListScreen(viewModel: ScannedBluetoothDeviceViewModel) {
 fun ScannedDevicesListScreenPreview() {
     val viewModel = ScannedBluetoothDeviceViewModelStub(Application())
 
-    ScannedDevicesListScreen(viewModel = viewModel)
+    ScannedDevicesListScreen(device = null, viewModel = viewModel)
 }
