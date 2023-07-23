@@ -24,10 +24,12 @@
 
 package io.github.kiyohitonara.pearwatch
 
+import android.Manifest
 import android.app.Application
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.IBinder
 import androidx.activity.ComponentActivity
@@ -63,7 +65,7 @@ import androidx.wear.compose.material.scrollAway
 
 class MainActivity : ComponentActivity() {
     private var scannedBluetoothDevice: ScannedBluetoothDevice? by mutableStateOf(null)
-    private val scannedBluetoothDeviceViewModel: ScannedBluetoothDeviceViewModelStub by viewModels()
+    private val scannedBluetoothDeviceViewModel: ScannedBluetoothDeviceViewModelImpl by viewModels()
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(className: ComponentName, service: IBinder) {
